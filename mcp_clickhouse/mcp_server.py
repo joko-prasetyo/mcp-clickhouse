@@ -211,18 +211,30 @@ def get_paginated_table_data(
     tables = result_to_table(result.column_names, result.result_rows)
 
     if include_detailed_columns:
+        # Batch fetch all columns for all tables in ONE query (fixes N+1 problem)
+        column_data_query = f"""
+            SELECT database, table, name, type AS column_type, default_kind, default_expression, comment
+            FROM system.columns
+            WHERE database = {format_query_value(database)}
+            AND table IN ({", ".join(format_query_value(t.name) for t in tables)})
+            ORDER BY table, position
+        """
+        column_data_query_result = client.query(column_data_query)
+        all_columns = result_to_column(
+            column_data_query_result.column_names,
+            column_data_query_result.result_rows,
+        )
+        
+        # Group columns by table name
+        columns_by_table: Dict[str, List[Column]] = {}
+        for col in all_columns:
+            if col.table not in columns_by_table:
+                columns_by_table[col.table] = []
+            columns_by_table[col.table].append(col)
+        
+        # Assign columns to each table
         for table in tables:
-            column_data_query = f"""
-                SELECT database, table, name, type AS column_type, default_kind, default_expression, comment
-                FROM system.columns
-                WHERE database = {format_query_value(database)}
-                AND table = {format_query_value(table.name)}
-            """
-            column_data_query_result = client.query(column_data_query)
-            table.columns = result_to_column(
-                column_data_query_result.column_names,
-                column_data_query_result.result_rows,
-            )
+            table.columns = columns_by_table.get(table.name, [])
     else:
         for table in tables:
             table.columns = []
