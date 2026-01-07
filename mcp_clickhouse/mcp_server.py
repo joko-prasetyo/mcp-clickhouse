@@ -177,7 +177,7 @@ def get_paginated_table_data(
     table_names: List[str],
     start_idx: int,
     page_size: int,
-    include_detailed_columns: bool = True,
+    include_detailed_columns: bool = False,
 ) -> tuple[List[Table], int, bool]:
     """Get detailed information for a page of tables.
 
@@ -281,7 +281,7 @@ def list_tables(
     not_like: Optional[str] = None,
     page_token: Optional[str] = None,
     page_size: int = 50,
-    include_detailed_columns: bool = True,
+    include_detailed_columns: bool = False,
 ) -> Dict[str, Any]:
     """List available ClickHouse tables in a database, including schema, comment,
     row count, and column count.
@@ -292,7 +292,7 @@ def list_tables(
         not_like: Optional NOT LIKE pattern to exclude table names
         page_token: Token for pagination, obtained from a previous call
         page_size: Number of tables to return per page (default: 50)
-        include_detailed_columns: Whether to include detailed column metadata (default: True).
+        include_detailed_columns: Whether to include detailed column metadata (default: False).
             When False, the columns array will be empty but create_table_query still contains
             all column information. This reduces payload size for large schemas.
 
@@ -316,7 +316,7 @@ def list_tables(
 
     if page_token and page_token in table_pagination_cache:
         cached_state = table_pagination_cache[page_token]
-        cached_include_detailed = cached_state.get("include_detailed_columns", True)
+        cached_include_detailed = cached_state.get("include_detailed_columns", False)
 
         if (
             cached_state["database"] != database
